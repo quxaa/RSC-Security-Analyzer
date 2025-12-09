@@ -25,7 +25,7 @@
 - [Usage](#-usage)
 - [Technical Details](#-technical-details)
 - [Screenshots](#-screenshots)
-- [Disclaimer](#disclaimer)
+- [Disclaimer](#-disclaimer)
 - [License](#-license)
 
 ## 🎯 Overview
