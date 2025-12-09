@@ -78,8 +78,8 @@ React Server Components (RSC) is a React feature that allows components to run o
 
 1. **Download the Extension**
    ```bash
-   git clone https://github.com/quxaa/RSC_Detector-Chrome.git
-   cd RSC_Detector-Chrome
+   git clone https://github.com/quxaa/RSC-Security-Analyzer.git
+   cd RSC-Security-Analyzer
    ```
 
 2. **Load in Chrome**
@@ -180,7 +180,7 @@ The extension uses a sophisticated payload structure targeting RSC deserializati
 
 
 
-## Disclaimer ⚠️ 
+## ⚠️ Disclaimer
 
 **This tool is for educational and authorized security testing purposes only.**
 
