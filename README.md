@@ -178,6 +178,7 @@ The extension uses a sophisticated payload structure targeting RSC deserializati
 
 ### Main Interface
 
+<img src="images/ui.png" alt="RSC Security Analyzer UI">
 
 
 ## ⚠️ Disclaimer
