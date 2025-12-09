@@ -180,7 +180,7 @@ The extension uses a sophisticated payload structure targeting RSC deserializati
 
 
 
-## ⚠️ Disclaimer
+## Disclaimer ⚠️ 
 
 **This tool is for educational and authorized security testing purposes only.**
 
