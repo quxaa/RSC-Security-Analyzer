@@ -11,7 +11,7 @@
 
 **A powerful Chrome extension for detecting and analyzing React Server Components (RSC) and Next.js App Router vulnerabilities**
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Screenshots](#-screenshots) • [Disclaimer](#disclaimer)
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Screenshots](#-screenshots) • [Disclaimer](#-disclaimer)
 
 </div>
 
