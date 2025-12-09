@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "RSC Security Analyzer",
+  "version": "1.0.1",
+  "description": "A powerful browser extension for detecting and analyzing React Server Components (RSC) and Next.js App Router vulnerabilities. WARNING: For testing purposes only. All responsibility lies with the user.",
+  "permissions": [
+    "activeTab",
+    "downloads"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "RSC Security Analyzer",
+    "default_icon": {
+      "16": "images/logo.png",
+      "48": "images/logo.png",
+      "128": "images/logo.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 520px;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #1a1a2e;
+            overflow: hidden;
+            max-height: 600px;
+        }
+
+        .app-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .app-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .app-container::-webkit-scrollbar-track {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .app-container::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 3px;
+        }
+
+        .app-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            padding: 14px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 2px;
+        }
+
+        .header-subtitle {
+            font-size: 10px;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        .container {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a2e;
+            letter-spacing: 0.3px;
+        }
+
+        .section-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: 700;
+            margin-right: 8px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-indicator::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .status-indicator.scanning {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+        }
+
+        .status-indicator.detected {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .status-indicator.safe {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+        }
+
+        .findings-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .findings-list li {
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            background: rgba(102, 126, 234, 0.05);
+            border-left: 3px solid #667eea;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #1a1a2e;
+            transition: all 0.2s ease;
+        }
+
+        .findings-list li:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(4px);
+        }
+
+        .findings-list li:empty::before {
+            content: 'Waiting for analysis...';
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-primary:disabled {
+            background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.5);
+        }
+
+        .btn-danger:disabled {
+            background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.5);
+        }
+
+        .btn-success:disabled {
+            background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            font-size: 11px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1a1a2e;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .input-wrapper input:focus {
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-wrapper .btn {
+            width: auto;
+            padding: 8px 16px;
+            flex-shrink: 0;
+        }
+
+        .toggle-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            margin-bottom: 8px;
+        }
+
+        .toggle-label {
+            font-size: 12px;
+            color: #1a1a2e;
+            font-weight: 500;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%);
+            transition: all 0.3s ease;
+            border-radius: 26px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: all 0.3s ease;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+        }
+
+        .result-container {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(102, 126, 234, 0.1);
+            display: none;
+        }
+
+        .console-output {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #00ff88;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 10px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-all;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .console-output::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .console-output::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .console-output::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 136, 0.3);
+            border-radius: 2px;
+        }
+
+        .console-output.error {
+            color: #ff6b6b;
+            border-color: rgba(255, 107, 107, 0.2);
+        }
+
+        .status-message {
+            font-size: 11px;
+            color: #667eea;
+            font-weight: 500;
+            margin-top: 8px;
+            display: none;
+            text-align: center;
+        }
+
+        .server-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            display: none;
+        }
+
+        .server-info-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .server-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 11px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .server-info-label {
+            color: #95a5a6;
+        }
+
+        .server-info-value {
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+
+        .server-info-value.status-2xx {
+            color: #27ae60;
+        }
+
+        .server-info-value.status-4xx {
+            color: #e67e22;
+        }
+
+        .server-info-value.status-5xx {
+            color: #e74c3c;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px 14px;
+            font-size: 9px;
+            color: rgba(26, 26, 46, 0.6);
+            border-top: 1px solid rgba(102, 126, 234, 0.1);
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .footer strong {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .warning-banner {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 12px 16px;
+            margin: 0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            font-size: 11px;
+            line-height: 1.5;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        }
+
+        .warning-banner strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .warning-banner .warning-text {
+            opacity: 0.95;
+            font-weight: 500;
+        }
+
+        .exploit-section {
+            border: 2px solid rgba(231, 76, 60, 0.2);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 240, 235, 0.95) 100%);
+        }
+
+        .exploit-section .section-title {
+            color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-content">
+                <h1>RSC Security Analyzer</h1>
+                <div class="header-subtitle">React Server Components Detection & Exploitation</div>
+            </div>
+        </div>
+
+        <div class="warning-banner">
+            <strong>⚠️ Security Warning</strong>
+            <div class="warning-text">This tool is for TESTING purposes only. Use only on systems you own or have explicit permission to test. All responsibility lies with the user. Unauthorized use is illegal.</div>
+        </div>
+
+        <div class="container">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="section-number">1</span>
+                        Passive Detection
+                    </div>
+                    <span id="passive-badge" class="status-indicator scanning">Scanning</span>
+                </div>
+                <ul id="passive-list" class="findings-list">
+                    <li>Waiting for page analysis...</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="section-number">2</span>
+                        Active Fingerprint
+                    </div>
+                </div>
+                <button id="btnFingerprint" class="btn btn-primary">Start Fingerprint Probe</button>
+                <div id="fingerprint-result" class="result-container">
+                    <ul id="active-list" class="findings-list"></ul>
+                </div>
+            </div>
+
+            <div class="section exploit-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="section-number">3</span>
+                        RCE Exploit
+            </div>
+        </div>
+                <div class="toggle-container">
+                    <label for="wafToggle" class="toggle-label">WAF Bypass (Junk Data)</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="wafToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="input-wrapper">
+                    <input type="text" id="cmdInput" placeholder="Command (e.g., echo vulnerability_test)" value="echo vulnerability_test">
+                    <button id="btnExploit" class="btn btn-danger">Execute</button>
+                </div>
+                <div id="exploit-status" class="status-message">Sending payload...</div>
+                <div id="exploit-result" class="result-container">
+                    <div id="rce-output" class="console-output"></div>
+                </div>
+                <div id="server-log" class="server-info">
+                    <div class="server-info-title">Server Response</div>
+                    <div class="server-info-row">
+                        <span class="server-info-label">Status:</span>
+                        <span id="server-status" class="server-info-value">-</span>
+                    </div>
+                    <div class="server-info-row">
+                        <span class="server-info-label">Title:</span>
+                        <span id="server-title" class="server-info-value">-</span>
+                </div>
+            </div>
+        </div>
+        
+            <button id="btnSaveRequest" class="btn btn-success" disabled>Save Request</button>
+    </div>
+
+    <div class="footer">
+        developed by <strong>qualw1n</strong>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
