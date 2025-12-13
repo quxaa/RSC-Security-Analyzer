@@ -17,7 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
         serverLog: document.getElementById('server-log'),
         serverStatus: document.getElementById('server-status'),
         serverTitle: document.getElementById('server-title'),
-        btnSaveRequest: document.getElementById('btnSaveRequest')
+        btnSaveRequest: document.getElementById('btnSaveRequest'),
+        btnMemoryShell: document.getElementById('btnMemoryShell'),
+        memoryShellResult: document.getElementById('memory-shell-result'),
+        memoryShellOutput: document.getElementById('memory-shell-output')
     };
 
     // Store request data for saving
@@ -184,6 +187,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     el.rceOutput.className = 'console-output error';
                     el.rceOutput.innerText = `[-] ${res ? res.msg : "Unknown Error"}`;
+                }
+            });
+        });
+
+        // --- Memory Shell Button ---
+        el.btnMemoryShell.addEventListener('click', () => {
+            // WAF toggle durumunu kontrol et
+            const wafEnabled = el.wafToggle && el.wafToggle.checked === true;
+            console.log('[Popup] Memory Shell - WAF Toggle checked:', wafEnabled);
+            
+            el.btnMemoryShell.disabled = true;
+            el.btnMemoryShell.textContent = "Deploying...";
+            el.memoryShellResult.style.display = 'none';
+            el.memoryShellOutput.className = 'console-output';
+
+            browserAPI.tabs.sendMessage(tabId, {
+                action: "deploy_memory_shell",
+                wafEnabled: wafEnabled
+            }, (res) => {
+                el.btnMemoryShell.disabled = false;
+                el.btnMemoryShell.textContent = "Memory Shell";
+                el.memoryShellResult.style.display = 'block';
+
+                if (browserAPI.runtime.lastError) {
+                    console.error('[Popup] Runtime error:', browserAPI.runtime.lastError);
+                    el.memoryShellOutput.className = 'console-output error';
+                    el.memoryShellOutput.innerText = `[-] Runtime Error: ${browserAPI.runtime.lastError.message}`;
+                    return;
+                }
+
+                if (res && res.success) {
+                    el.memoryShellOutput.className = 'console-output';
+                    let successMsg = `[+] SUCCESS\n[+] Memory Shell Path: ${res.shellPath}\n[+] Access: ${res.fullUrl}`;
+                    if (wafEnabled) {
+                        successMsg += `\n[+] WAF Bypass: ON`;
+                    }
+                    if (res.message) {
+                        successMsg += `\n[+] Response: ${res.message}`;
+                    }
+                    if (res.note) {
+                        successMsg += `\n[!] Note: ${res.note}`;
+                    }
+                    el.memoryShellOutput.innerText = successMsg;
+                } else {
+                    el.memoryShellOutput.className = 'console-output error';
+                    console.log('[Popup] Error response:', res);
+                    el.memoryShellOutput.innerText = `[-] ${res ? (res.msg || "Unknown Error") : "No response received"}`;
                 }
             });
         });
