@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnExploit: document.getElementById('btnExploit'),
         cmdInput: document.getElementById('cmdInput'),
         wafToggle: document.getElementById('wafToggle'),
+        awsWafToggle: document.getElementById('awsWafToggle'),
         exploitStatus: document.getElementById('exploit-status'),
         exploitResult: document.getElementById('exploit-result'),
         rceOutput: document.getElementById('rce-output'),
@@ -26,20 +27,50 @@ document.addEventListener('DOMContentLoaded', () => {
     // Store request data for saving
     let lastRequestData = null;
 
-    // WAF Toggle durumunu localStorage'dan yükle
     const savedWafState = localStorage.getItem('wafBypassEnabled');
     if (savedWafState !== null) {
         el.wafToggle.checked = savedWafState === 'true';
     } else {
-        // İlk kullanımda varsayılan olarak kapalı
         el.wafToggle.checked = false;
     }
 
-    // WAF Toggle değiştiğinde localStorage'a kaydet
+    const savedAwsWafState = localStorage.getItem('awsWafEnabled');
+    if (savedAwsWafState !== null) {
+        el.awsWafToggle.checked = savedAwsWafState === 'true';
+    } else {
+        el.awsWafToggle.checked = false;
+    }
+
+    const updateToggleStates = () => {
+        const wafEnabled = el.wafToggle.checked;
+        const awsWafEnabled = el.awsWafToggle.checked;
+        
+        if (wafEnabled && awsWafEnabled) {
+            el.awsWafToggle.checked = false;
+            localStorage.setItem('awsWafEnabled', 'false');
+        }
+        
+        const finalWafEnabled = el.wafToggle.checked;
+        const finalAwsWafEnabled = el.awsWafToggle.checked;
+        
+        el.awsWafToggle.disabled = finalWafEnabled;
+        el.wafToggle.disabled = finalAwsWafEnabled;
+    };
+
+    updateToggleStates();
+
     el.wafToggle.addEventListener('change', () => {
         const isEnabled = el.wafToggle.checked;
         localStorage.setItem('wafBypassEnabled', isEnabled.toString());
         console.log('[Popup] WAF Toggle changed, saved:', isEnabled);
+        updateToggleStates();
+    });
+
+    el.awsWafToggle.addEventListener('change', () => {
+        const isEnabled = el.awsWafToggle.checked;
+        localStorage.setItem('awsWafEnabled', isEnabled.toString());
+        console.log('[Popup] AWS WAF Toggle changed, saved:', isEnabled);
+        updateToggleStates();
     });
 
     // 1. 获取当前 Tab
@@ -64,7 +95,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
             el.passiveList.innerHTML = "";
             if (res.details.length === 0) el.passiveList.innerHTML = "<li>No patterns found</li>";
+            
+            if (res.preAnalysis) {
+                const preAnalysisLi = document.createElement('li');
+                if (res.preAnalysis.vulnerable) {
+                    preAnalysisLi.style.fontWeight = '700';
+                    preAnalysisLi.style.color = '#e74c3c';
+                    preAnalysisLi.style.borderLeft = '3px solid #e74c3c';
+                    preAnalysisLi.style.background = 'rgba(231, 76, 60, 0.1)';
+                    preAnalysisLi.innerText = `⚠ VULNERABLE`;
+                    if (res.preAnalysis.location) {
+                        preAnalysisLi.innerText += ` (Location: ${res.preAnalysis.location})`;
+                    }
+                } else {
+                    preAnalysisLi.style.fontWeight = '600';
+                    preAnalysisLi.style.color = '#27ae60';
+                    preAnalysisLi.style.borderLeft = '3px solid #27ae60';
+                    preAnalysisLi.innerText = `✓ NOT VULNERABLE`;
+                }
+                el.passiveList.appendChild(preAnalysisLi);
+            }
+            
+            const versionLi = document.createElement('li');
+            if (res.nextJsVersion) {
+                versionLi.style.fontWeight = '600';
+                versionLi.style.color = '#667eea';
+                versionLi.style.borderLeft = '3px solid #667eea';
+                versionLi.innerText = `✓ Next.js ${res.nextJsVersion} (${res.versionDetectionMethod || 'detected'})`;
+            } else {
+                versionLi.style.color = '#95a5a6';
+                versionLi.style.fontStyle = 'italic';
+                versionLi.innerText = `Next.js Version: Not detected`;
+            }
+            el.passiveList.appendChild(versionLi);
+            
             res.details.forEach(d => {
+                if (d.includes('Next.js Version:')) {
+                    return;
+                }
                 const li = document.createElement('li');
                 li.innerText = d;
                 el.passiveList.appendChild(li);
@@ -98,11 +166,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- 交互：RCE 利用 ---
         el.btnExploit.addEventListener('click', () => {
             const cmd = el.cmdInput.value || "whoami";
-            // WAF toggle durumunu STRICT olarak kontrol et
             const wafEnabled = el.wafToggle && el.wafToggle.checked === true;
+            const awsWafEnabled = el.awsWafToggle && el.awsWafToggle.checked === true;
             console.log('[Popup] WAF Toggle element:', el.wafToggle);
             console.log('[Popup] WAF Toggle checked value:', el.wafToggle ? el.wafToggle.checked : 'N/A');
             console.log('[Popup] WAF Enabled (final):', wafEnabled);
+            console.log('[Popup] AWS WAF Enabled (final):', awsWafEnabled);
             el.btnExploit.disabled = true;
             el.exploitStatus.style.display = 'block';
             el.exploitResult.style.display = 'none';
@@ -111,7 +180,8 @@ document.addEventListener('DOMContentLoaded', () => {
             browserAPI.tabs.sendMessage(tabId, {
                 action: "run_exploit",
                 cmd: cmd,
-                wafEnabled: wafEnabled
+                wafEnabled: wafEnabled,
+                awsWafEnabled: awsWafEnabled
             }, (res) => {
                 console.log('[Popup] Received response:', res);
                 console.log('[Popup] Response statusCode:', res ? res.statusCode : 'N/A');
@@ -181,8 +251,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (res && res.success) {
                     el.rceOutput.className = 'console-output';
-                    el.rceOutput.innerText = `[+] Command: ${cmd}\n[+] WAF Bypass: ${wafEnabled ? 'ON' : 'OFF'}\n[+] Output:\n${res.output}`;
-                    // 成功后强制图标报警
+                    let outputText = `[+] Command: ${cmd}\n[+] WAF Bypass: ${wafEnabled ? 'ON' : 'OFF'}\n[+] AWS WAF: ${awsWafEnabled ? 'ON' : 'OFF'}\n[+] Output:\n${res.output}`;
+                    el.rceOutput.innerText = outputText;
                     browserAPI.runtime.sendMessage({ action: "update_badge" });
                 } else {
                     el.rceOutput.className = 'console-output error';
@@ -193,9 +263,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Memory Shell Button ---
         el.btnMemoryShell.addEventListener('click', () => {
-            // WAF toggle durumunu kontrol et
             const wafEnabled = el.wafToggle && el.wafToggle.checked === true;
+            const awsWafEnabled = el.awsWafToggle && el.awsWafToggle.checked === true;
             console.log('[Popup] Memory Shell - WAF Toggle checked:', wafEnabled);
+            console.log('[Popup] Memory Shell - AWS WAF Toggle checked:', awsWafEnabled);
             
             el.btnMemoryShell.disabled = true;
             el.btnMemoryShell.textContent = "Deploying...";
@@ -204,7 +275,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             browserAPI.tabs.sendMessage(tabId, {
                 action: "deploy_memory_shell",
-                wafEnabled: wafEnabled
+                wafEnabled: wafEnabled,
+                awsWafEnabled: awsWafEnabled
             }, (res) => {
                 el.btnMemoryShell.disabled = false;
                 el.btnMemoryShell.textContent = "Memory Shell";
@@ -222,6 +294,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     let successMsg = `[+] SUCCESS\n[+] Memory Shell Path: ${res.shellPath}\n[+] Access: ${res.fullUrl}`;
                     if (wafEnabled) {
                         successMsg += `\n[+] WAF Bypass: ON`;
+                    }
+                    if (awsWafEnabled) {
+                        successMsg += `\n[+] AWS WAF: ON`;
                     }
                     if (res.message) {
                         successMsg += `\n[+] Response: ${res.message}`;
